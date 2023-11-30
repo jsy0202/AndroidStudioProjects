@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1073322566025",
+    "project_id": "project-c1f4b",
+    "storage_bucket": "project-c1f4b.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1073322566025:android:ca6075db2a7a2b3a86c158",
+        "android_client_info": {
+          "package_name": "hansung.ac.project1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCgkjy_knc4V8xdkxgrqSUhfdaUmnKDJ94"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
