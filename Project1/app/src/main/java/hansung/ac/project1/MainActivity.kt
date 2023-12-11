@@ -1,63 +1,84 @@
 package hansung.ac.project1
 
-import android.graphics.BitmapFactory
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.widget.ImageView
+import android.widget.Button
+import android.widget.Switch
 import android.widget.TextView
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
-import com.google.firebase.remoteconfig.ktx.remoteConfig
-import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
-import com.google.firebase.storage.ktx.storage
 
 class MainActivity : AppCompatActivity() {
+
+    private lateinit var recyclerView: RecyclerView
+    private lateinit var adapter: MyAdapter
+    private val db = FirebaseFirestore.getInstance()
+    private val itemsCollectionRef = db.collection("items")
+    private lateinit var switch: Switch
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        //setContentView(null)
 
-        val textView = findViewById<TextView>(R.id.textView)
-        Firebase.auth.signInWithEmailAndPassword("user2@naver.com", "123456")
-            .addOnCompleteListener(this) { // it: Task<AuthResult!>
-                if (it.isSuccessful) {
-                    textView.text = "sign-in success ${Firebase.auth.currentUser?.uid}"
-                    displayImage()
+        recyclerView = findViewById(R.id.recyclerViewItems)
+        recyclerView.layoutManager = LinearLayoutManager(this)
 
+        switch = findViewById(R.id.switch1)
 
-                } else {
-                    textView.text = "sign-in failed"
-                }
-            }
+        val userEmail = intent.getStringExtra("user_email") ?: ""
 
-        val remoteConfig = Firebase.remoteConfig
-        val configSettings = remoteConfigSettings {
-            minimumFetchIntervalInSeconds = 1 // For test purpose only, 3600 seconds for production
+        adapter = MyAdapter(this, mutableListOf(), userEmail) // userEmail을 adapter 초기화 시에 전달
+        recyclerView.adapter = adapter
+
+        switch.setOnCheckedChangeListener { _, isChecked ->
+            fetchDataFromFirestore(isChecked)
         }
-        remoteConfig.setConfigSettingsAsync(configSettings)
-        remoteConfig.setDefaultsAsync(R.xml.remote_config)
 
-        val textView2 = findViewById<TextView>(R.id.textView2)
-        remoteConfig.fetchAndActivate()
-            .addOnCompleteListener(this) { // it: task
-                val test = remoteConfig.getBoolean("test")
-                textView2.text = "${test}"
-            }
+        val textView = findViewById<TextView>(R.id.textView1)
+        textView.text = "$userEmail"
+
+        val logoutButton = findViewById<Button>(R.id.logout_button)
+        logoutButton.setOnClickListener {
+            Firebase.auth.signOut()
+            startActivity(Intent(this@MainActivity, LoginActivity::class.java))
+            finish()
+        }
+
+        findViewById<Button>(R.id.add).setOnClickListener {
+            val intent = Intent(this, FirestoreActivity::class.java)
+            startActivity(intent)
+        }
     }
 
-    fun displayImage() {
-        val storageRef = Firebase.storage.reference // reference to root
-        //val imageRef1 = storageRef.child("images/computer_sangsangbugi.jpg")
-        val imageRef = Firebase.storage.getReferenceFromUrl(
-            "gs://project-c1f4b.appspot.com/seoyeong.png"
-        )
+    override fun onResume() {
+        super.onResume()
+        fetchDataFromFirestore(switch.isChecked)
+    }
 
-        val view = findViewById<ImageView>(R.id.imageView)
-        imageRef?.getBytes(Long.MAX_VALUE)?.addOnSuccessListener {
-            val bmp = BitmapFactory.decodeByteArray(it, 0, it.size)
-            view.setImageBitmap(bmp)
-        }?.addOnFailureListener {
-// Failed to download the image
+    private fun fetchDataFromFirestore(status: Boolean) {
+        val query = if (status) {
+            itemsCollectionRef.whereEqualTo("status", true)
+        } else {
+            itemsCollectionRef
         }
+
+        query.get()
+            .addOnSuccessListener { querySnapshot ->
+                val itemList = mutableListOf<Item>()
+
+                for (document in querySnapshot) {
+                    val item = Item(document)
+                    itemList.add(item)
+                }
+
+                adapter.updateList(itemList)
+            }
+            .addOnFailureListener { exception ->
+                // Handle the failure to fetch data from Firestore
+            }
     }
 }
